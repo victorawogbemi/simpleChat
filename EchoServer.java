@@ -23,6 +23,7 @@ public class EchoServer extends AbstractServer
    * The default port to listen on.
    */
   final public static int DEFAULT_PORT = 5555;
+  public boolean closed = false;
   
   //Constructors ****************************************************
   
@@ -48,9 +49,67 @@ public class EchoServer extends AbstractServer
   public void handleMessageFromClient
     (Object msg, ConnectionToClient client)
   {
+	if (msg.toString().contains("#login")) {
+		
+		client.setInfo(client.toString(), Integer.parseInt(msg.toString().substring(7)));
+		
+	}
+	else {
     System.out.println("Message received: " + msg + " from " + client);
-    this.sendToAllClients(msg);
+    this.sendToAllClients(client.getInfo(client.toString()).toString() + ": " + msg);}
   }
+  
+  public void handleMessageFromServerClient
+  (String message) {
+	  if(message.charAt(11) == '#') {
+		  
+			switch(message.substring(12,16)) {
+				case "quit":
+					try {
+						close();
+						}
+						catch(IOException e) {}
+					System.exit(0);
+					break;
+				case "stop":
+					stopListening();
+					break;
+				case "clos":
+					try {
+					close();
+					}
+					catch(IOException e) {}
+					break;
+				case "setp":
+					if(closed) {System.out.println("Server is not closed, please try again");}
+					else {
+						setPort(Integer.parseInt(message.substring(20)));}
+					break;
+				case "star":
+					if(!isListening()) {
+						try{
+							listen();
+						}
+						catch (IOException e) {	}
+					}
+					else {
+						System.out.println("Server is already listening!");
+					}
+					break;	
+				case "getp":
+					System.out.println(String.valueOf(getPort()));
+					break;
+				default:
+					System.out.println("unable to read command");
+					break;
+				}
+	  		}
+	  else {
+			System.out.println(message);
+			this.sendToAllClients(message);
+	  }
+  
+}
     
   /**
    * This method overrides the one in the superclass.  Called
@@ -60,6 +119,7 @@ public class EchoServer extends AbstractServer
   {
     System.out.println
       ("Server listening for connections on port " + getPort());
+    closed = false;
   }
   
   /**
@@ -73,6 +133,28 @@ public class EchoServer extends AbstractServer
   }
   
   //Class methods ***************************************************
+  
+  /**
+   * Hook method called each time a new client connection is
+   * accepted. The default implementation does nothing.
+   * @param client the connection connected to the client.
+   */
+  protected void clientConnected(ConnectionToClient client) {System.out.println("Client has connected");}
+
+  /**
+   * Hook method called each time a client disconnects.
+   * The default implementation does nothing. The method
+   * may be overridden by subclasses but should remains synchronized.
+   *
+   * @param client the connection with the client.
+   */
+  synchronized protected void clientDisconnected(
+    ConnectionToClient client) {System.out.println("Client has disconnected");}
+
+  protected void connectionClosed() {
+		System.out.println("Connection has been closed");
+		closed = true;
+	}
   
   /**
    * This method is responsible for the creation of 
